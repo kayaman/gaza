@@ -49,4 +49,4 @@ touch backend/lambda/src/utils/{logger.ts,validators.ts,errors.ts}
 touch backend/lambda/src/utils/index.ts
 
 touch backend/vercel/{package.json,tsconfig.json}
-touch backend/vercel/api/chat.ts
+touch backend/vercel/api/chat.tsmkdir -p infrastructure/aws/cdk/constructs/

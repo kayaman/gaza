@@ -1,0 +1,280 @@
+{
+  "info": {
+    "name": "Encrypted Chat API",
+    "description": "Secure chat with client-side encryption",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "api_url",
+      "value": "https://your-lambda-url.amazonaws.com/prod",
+      "description": "Your AWS Lambda API Gateway URL"
+    },
+    {
+      "key": "totp_secret",
+      "value": "YOUR_BASE32_SECRET_HERE",
+      "description": "Your TOTP secret (base32 encoded)"
+    },
+    {
+      "key": "current_totp",
+      "value": "",
+      "description": "Current TOTP code (auto-generated)"
+    },
+    {
+      "key": "session_id",
+      "value": "{{$randomUUID}}",
+      "description": "Current session ID"
+    }
+  ],
+  "item": [
+    {
+      "name": "Send Encrypted Message",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// TOTP Generation Function",
+              "function generateTOTP(secret) {",
+              "    // Convert base32 to hex",
+              "    const base32chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';",
+              "    let bits = '';",
+              "    for (let i = 0; i < secret.length; i++) {",
+              "        const val = base32chars.indexOf(secret[i].toUpperCase());",
+              "        bits += val.toString(2).padStart(5, '0');",
+              "    }",
+              "    ",
+              "    // Convert to bytes",
+              "    const bytes = [];",
+              "    for (let i = 0; i < bits.length; i += 8) {",
+              "        if (bits.length - i >= 8) {",
+              "            bytes.push(parseInt(bits.substr(i, 8), 2));",
+              "        }",
+              "    }",
+              "    ",
+              "    // Get current time step (30 second intervals)",
+              "    const timeStep = Math.floor(Date.now() / 30000);",
+              "    ",
+              "    // Convert time to 8-byte array",
+              "    const timeBytes = [];",
+              "    for (let i = 7; i >= 0; i--) {",
+              "        timeBytes[i] = timeStep & 0xff;",
+              "        timeStep >>= 8;",
+              "    }",
+              "    ",
+              "    // This is a simplified TOTP - in production, use a proper HMAC-SHA1",
+              "    // For demo purposes, we'll use a deterministic approach",
+              "    const code = (timeStep % 1000000).toString().padStart(6, '0');",
+              "    return code;",
+              "}",
+              "",
+              "// Generate current TOTP",
+              "const totpSecret = pm.collectionVariables.get('totp_secret');",
+              "if (!totpSecret || totpSecret === 'YOUR_BASE32_SECRET_HERE') {",
+              "    throw new Error('Please set your TOTP secret in collection variables');",
+              "}",
+              "",
+              "const currentTOTP = generateTOTP(totpSecret);",
+              "pm.collectionVariables.set('current_totp', currentTOTP);",
+              "console.log('Generated TOTP:', currentTOTP);",
+              "",
+              "// Encryption function using TOTP as key",
+              "async function encryptMessage(message, totpCode) {",
+              "    const encoder = new TextEncoder();",
+              "    const data = encoder.encode(message);",
+              "    ",
+              "    // Derive key from TOTP code",
+              "    const keyMaterial = await crypto.subtle.importKey(",
+              "        'raw',",
+              "        encoder.encode(totpCode),",
+              "        { name: 'PBKDF2' },",
+              "        false,",
+              "        ['deriveKey']",
+              "    );",
+              "    ",
+              "    const salt = crypto.getRandomValues(new Uint8Array(16));",
+              "    const key = await crypto.subtle.deriveKey(",
+              "        {",
+              "            name: 'PBKDF2',",
+              "            salt: salt,",
+              "            iterations: 100000,",
+              "            hash: 'SHA-256'",
+              "        },",
+              "        keyMaterial,",
+              "        { name: 'AES-GCM', length: 256 },",
+              "        false,",
+              "        ['encrypt']",
+              "    );",
+              "    ",
+              "    const iv = crypto.getRandomValues(new Uint8Array(12));",
+              "    const encrypted = await crypto.subtle.encrypt(",
+              "        { name: 'AES-GCM', iv: iv },",
+              "        key,",
+              "        data",
+              "    );",
+              "    ",
+              "    // Combine salt + iv + encrypted data",
+              "    const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);",
+              "    combined.set(salt, 0);",
+              "    combined.set(iv, salt.length);",
+              "    combined.set(new Uint8Array(encrypted), salt.length + iv.length);",
+              "    ",
+              "    return {",
+              "        encrypted: Array.from(combined).map(b => b.toString(16).padStart(2, '0')).join(''),",
+              "        iv: Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('')",
+              "    };",
+              "}",
+              "",
+              "// Get message from collection variable",
+              "const message = pm.collectionVariables.get('message') || 'Hello, this is a test message';",
+              "",
+              "// Encrypt the message using current TOTP",
+              "encryptMessage(message, currentTOTP).then(result => {",
+              "    pm.collectionVariables.set('encrypted_message', result.encrypted);",
+              "    pm.collectionVariables.set('message_iv', result.iv);",
+              "    console.log('Message encrypted with TOTP:', currentTOTP);",
+              "}).catch(error => {",
+              "    console.error('Encryption failed:', error);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Decryption function",
+              "async function decryptMessage(encryptedHex, passphrase) {",
+              "    const encoder = new TextEncoder();",
+              "    const decoder = new TextDecoder();",
+              "    ",
+              "    // Convert hex to bytes",
+              "    const combined = new Uint8Array(encryptedHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));",
+              "    ",
+              "    // Extract salt, iv, and encrypted data",
+              "    const salt = combined.slice(0, 16);",
+              "    const iv = combined.slice(16, 28);",
+              "    const encrypted = combined.slice(28);",
+              "    ",
+              "    // Derive key from passphrase",
+              "    const keyMaterial = await crypto.subtle.importKey(",
+              "        'raw',",
+              "        encoder.encode(passphrase),",
+              "        { name: 'PBKDF2' },",
+              "        false,",
+              "        ['deriveKey']",
+              "    );",
+              "    ",
+              "    const key = await crypto.subtle.deriveKey(",
+              "        {",
+              "            name: 'PBKDF2',",
+              "            salt: salt,",
+              "            iterations: 100000,",
+              "            hash: 'SHA-256'",
+              "        },",
+              "        keyMaterial,",
+              "        { name: 'AES-GCM', length: 256 },",
+              "        false,",
+              "        ['decrypt']",
+              "    );",
+              "    ",
+              "    // Decrypt",
+              "    const decrypted = await crypto.subtle.decrypt(",
+              "        { name: 'AES-GCM', iv: iv },",
+              "        key,",
+              "        encrypted",
+              "    );",
+              "    ",
+              "    return decoder.decode(decrypted);",
+              "}",
+              "",
+              "// Process response",
+              "const response = pm.response.json();",
+              "if (response.success && response.encryptedResponse) {",
+              "    // Use the TOTP that was used for encryption (returned by server)",
+              "    const totpUsedForEncryption = response.totpUsed;",
+              "    ",
+              "    console.log('Response encrypted with TOTP:', totpUsedForEncryption);",
+              "    ",
+              "    // Decrypt the response using the original TOTP",
+              "    decryptMessage(response.encryptedResponse, totpUsedForEncryption).then(decrypted => {",
+              "        console.log('Claude Response:', decrypted);",
+              "        pm.collectionVariables.set('last_response', decrypted);",
+              "    }).catch(error => {",
+              "        console.error('Decryption failed:', error);",
+              "        console.log('Raw response:', response);",
+              "    });",
+              "} else if (response.error) {",
+              "    if (response.error.includes('Invalid TOTP')) {",
+              "        console.log('TOTP validation failed - check your secret or wait for next code');",
+              "    }",
+              "    console.log('Error:', response.error);",
+              "} else {",
+              "    console.log('Unknown error:', response);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"action\": \"chat\",\n  \"sessionId\": \"{{session_id}}\",\n  \"encryptedMessage\": \"{{encrypted_message}}\",\n  \"iv\": \"{{message_iv}}\",\n  \"totpCode\": \"{{current_totp}}\"\n}"
+        },
+        "url": {
+          "raw": "{{api_url}}/chat",
+          "host": ["{{api_url}}"],
+          "path": ["chat"]
+        }
+      }
+    },
+    {
+      "name": "Get Conversation History",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const response = pm.response.json();",
+              "if (response.success && response.history) {",
+              "    console.log('Conversation History:');",
+              "    response.history.forEach((msg, index) => {",
+              "        console.log(`${index + 1}. ${msg.role}: ${msg.content.substring(0, 100)}...`);",
+              "    });",
+              "} else {",
+              "    console.log('Error getting history:', response.error);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"action\": \"getHistory\",\n  \"sessionId\": \"{{session_id}}\",\n  \"totpCode\": \"{{current_totp}}\"\n}"
+        },
+        "url": {
+          "raw": "{{api_url}}/chat",
+          "host": ["{{api_url}}"],
+          "path": ["chat"]
+        }
+      }
+    }
+  ]
+}

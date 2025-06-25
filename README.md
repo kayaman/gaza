@@ -247,7 +247,7 @@ secure-ai-chat-proxy/
                                                ▼
                             5. Lambda Processing:
                             ├─ TOTP Validation
-                            ├─ Message Decryption  
+                            ├─ Message Decryption
                             ├─ Anthropic API Call
                             ├─ Response Encryption
                             └─ DynamoDB Storage
@@ -274,6 +274,7 @@ secure-ai-chat-proxy/
 ## 🔧 Tech Stack
 
 ### Backend Technologies
+
 - **Runtime**: Node.js 18.x
 - **Cloud Platform**: AWS (Lambda, API Gateway, DynamoDB)
 - **Alternative**: Vercel (Serverless Functions)
@@ -281,6 +282,7 @@ secure-ai-chat-proxy/
 - **API**: REST with JSON payloads
 
 ### Security Technologies
+
 - **Encryption**: AES-256-GCM
 - **Key Derivation**: PBKDF2-SHA256 (100,000 iterations)
 - **Authentication**: TOTP (RFC 6238)
@@ -288,18 +290,21 @@ secure-ai-chat-proxy/
 - **Hash Algorithm**: HMAC-SHA1 (TOTP), SHA-256 (PBKDF2)
 
 ### Client Technologies
+
 - **Primary Client**: Postman (JavaScript pre/post scripts)
 - **Crypto API**: Web Crypto API (browser-based)
 - **Alternative**: Node.js CLI client
 - **Optional**: React Web client
 
 ### Infrastructure Technologies
+
 - **IaC**: Terraform, CloudFormation, AWS CDK
 - **DNS**: CloudFlare (proxy + obfuscation)
 - **SSL**: Let's Encrypt certificates
 - **Monitoring**: CloudWatch, custom scripts
 
 ### Protocols & Standards
+
 - **HTTP/2 + TLS 1.3**: Transport protocol
 - **RFC 6238**: TOTP specification
 - **RFC 3394**: AES key wrapping
@@ -309,6 +314,7 @@ secure-ai-chat-proxy/
 ## 🚀 Key Features
 
 ### Security Features
+
 - **End-to-End Encryption**: AES-256-GCM with rotating keys
 - **Perfect Forward Secrecy**: TOTP-based key rotation (30s intervals)
 - **Anti-Replay Protection**: Time-limited TOTP validation
@@ -317,6 +323,7 @@ secure-ai-chat-proxy/
 - **Emergency Procedures**: Instant burn/switch protocols
 
 ### Operational Features
+
 - **Conversation History**: Encrypted storage with auto-expiry
 - **Multi-Domain Support**: Automatic domain rotation
 - **Load Balancing**: Multiple AWS regions support
@@ -324,6 +331,7 @@ secure-ai-chat-proxy/
 - **Backup & Recovery**: Cross-region data replication
 
 ### Stealth Features
+
 - **Business Domain Mimicry**: Legitimate-looking API endpoints
 - **Traffic Mixing**: Interspersed legitimate API calls
 - **Timing Obfuscation**: Business hours operation patterns
@@ -333,16 +341,17 @@ secure-ai-chat-proxy/
 ## 📊 Data Structures
 
 ### DynamoDB Table Schema
+
 ```json
 {
   "TableName": "encrypted-chat-sessions",
   "KeySchema": [
-    {"AttributeName": "sessionId", "KeyType": "HASH"},
-    {"AttributeName": "timestamp", "KeyType": "RANGE"}
+    { "AttributeName": "sessionId", "KeyType": "HASH" },
+    { "AttributeName": "timestamp", "KeyType": "RANGE" }
   ],
   "AttributeDefinitions": [
-    {"AttributeName": "sessionId", "AttributeType": "S"},
-    {"AttributeName": "timestamp", "AttributeType": "S"}
+    { "AttributeName": "sessionId", "AttributeType": "S" },
+    { "AttributeName": "timestamp", "AttributeType": "S" }
   ],
   "TimeToLiveSpecification": {
     "AttributeName": "ttl",
@@ -352,6 +361,7 @@ secure-ai-chat-proxy/
 ```
 
 ### Message Structure
+
 ```json
 {
   "sessionId": "proj-2025-k3n9x7m2q",
@@ -363,12 +373,13 @@ secure-ai-chat-proxy/
 ```
 
 ### API Request/Response Format
+
 ```json
 {
   "action": "chat|getHistory",
   "sessionId": "string",
   "encryptedMessage": "hex_string",
-  "iv": "hex_string", 
+  "iv": "hex_string",
   "totpCode": "6_digit_string"
 }
 ```
@@ -386,6 +397,7 @@ secure-ai-chat-proxy/
 ## 🛠️ Implementation Guide
 
 ### Prerequisites
+
 - AWS Account with appropriate permissions
 - Domain registrar access (for business domains)
 - Google Authenticator app
@@ -393,30 +405,36 @@ secure-ai-chat-proxy/
 - Node.js 18+ (for development)
 
 ### Quick Start
+
 1. **Clone Repository**
+
    ```bash
    git clone https://github.com/your-org/secure-ai-chat-proxy.git
    cd secure-ai-chat-proxy
    ```
 
 2. **Set Up Environment**
+
    ```bash
    cp .env.example .env
    # Edit .env with your configurations
    ```
 
 3. **Deploy Infrastructure**
+
    ```bash
    cd scripts/deployment
    ./deploy-aws.sh
    ```
 
 4. **Configure Domains**
+
    ```bash
    ./setup-domains.sh
    ```
 
 5. **Set Up TOTP**
+
    ```bash
    cd tools/generators
    node totp-secret-generator.js
@@ -429,6 +447,7 @@ secure-ai-chat-proxy/
 ### Detailed Implementation
 
 Refer to individual documentation files:
+
 - [DEPLOYMENT.md](docs/DEPLOYMENT.md) - Complete deployment guide
 - [SECURITY.md](docs/SECURITY.md) - Security setup and OPSEC
 - [API.md](docs/API.md) - API documentation and usage
@@ -437,18 +456,21 @@ Refer to individual documentation files:
 ## 🔐 Security Considerations
 
 ### Threat Model
+
 - **Corporate Network Monitoring**: DLP, firewall, packet inspection
 - **Traffic Analysis**: Pattern recognition, timing analysis
 - **Domain Reputation**: Blacklist detection, security scanning
 - **Payload Analysis**: Content inspection, size analysis
 
 ### Mitigation Strategies
+
 - **Encryption**: Military-grade AES-256-GCM
 - **Obfuscation**: Business domain camouflage
 - **Randomization**: Traffic timing and size variation
 - **Rotation**: Domain and key rotation schedules
 
 ### Compliance
+
 - **GDPR**: Data minimization, encryption at rest
 - **SOC 2**: Security controls, monitoring
 - **ISO 27001**: Information security management
@@ -456,6 +478,7 @@ Refer to individual documentation files:
 ## 📈 Monitoring & Observability
 
 ### Metrics
+
 - Request/response latency
 - Error rates and types
 - TOTP validation success/failure
@@ -463,12 +486,14 @@ Refer to individual documentation files:
 - Storage utilization
 
 ### Alerts
+
 - Failed TOTP validations (potential attack)
 - Unusual traffic patterns
 - Domain blocking detection
 - Service availability issues
 
 ### Logging
+
 - Encrypted request metadata
 - TOTP validation events
 - Error conditions
@@ -477,6 +502,7 @@ Refer to individual documentation files:
 ## 🚨 Emergency Procedures
 
 ### Domain Burn Notice
+
 1. Detect domain blocking/suspicion
 2. Switch to backup domain immediately
 3. Update DNS configurations
@@ -484,6 +510,7 @@ Refer to individual documentation files:
 5. Monitor for continued access
 
 ### TOTP Compromise
+
 1. Generate new TOTP secret
 2. Update Lambda environment
 3. Reconfigure client applications
@@ -491,6 +518,7 @@ Refer to individual documentation files:
 5. Monitor for unauthorized access
 
 ### Data Breach Response
+
 1. Assess compromise scope
 2. Rotate all secrets immediately
 3. Audit access logs
@@ -505,9 +533,9 @@ Refer to individual documentation files:
 - [AES-GCM Specification](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf)
 - [Postman Documentation](https://learning.postman.com/)
 
-## 📄 ~~License~~
+## 📄 License
 
-This project is **restricted** and **classified**.
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🤝 Contributing
 
