@@ -1,0 +1,205 @@
+# ========================================
+# Terraform .gitignore
+# ========================================
+
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files, which are likely to contain sensitive data
+*.tfvars
+!*.tfvars.template
+!environments/*.tfvars
+
+# Ignore override files as they are usually used to override resources locally
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Include override files you do wish to add to version control using negated pattern
+# !example_override.tf
+
+# Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
+*tfplan*
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Ignore Terraform lock file changes (uncomment if you want to track lock file)
+# .terraform.lock.hcl
+
+# ========================================
+# Environment and secrets
+# ========================================
+
+# Never commit secrets
+secrets.tfvars
+secrets.*.tfvars
+.secrets
+.env.local
+.env.*.local
+
+# Backend configuration with sensitive data
+backend.hcl
+backend.*.hcl
+
+# ========================================
+# Generated files
+# ========================================
+
+# Terraform documentation
+README.md
+
+# Postman configuration files
+postman-config-*.json
+
+# Cost estimation files
+plan.json
+tfplan.binary
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# ========================================
+# IDE and editor files
+# ========================================
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Sublime Text
+*.tmlanguage.cache
+*.tmPreferences.cache
+*.stTheme.cache
+*.sublime-workspace
+*.sublime-project
+
+# ========================================
+# OS generated files
+# ========================================
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ========================================
+# Logs and temporary files
+# ========================================
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Archives
+*.zip
+*.tar.gz
+*.tgz
+*.rar
+
+# ========================================
+# Security and compliance
+# ========================================
+
+# TFSec reports
+tfsec-report.*
+
+# Checkov reports
+checkov-report.*
+
+# Terrascan reports
+terrascan-report.*
+
+# ========================================
+# CI/CD and automation
+# ========================================
+
+# Test results
+test-results/
+coverage/
+
+# Build artifacts
+dist/
+build/
+
+# Node modules (if using any Node.js tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if using any Python tools)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+
+# ========================================
+# Custom ignores for this project
+# ========================================
+
+# Lambda deployment packages
+*.zip
+
+# CloudFormation templates (generated)
+generated-*.yaml
+generated-*.yml
+
+# Terraform workspace files
+.terraform.tfstate.lock.info
+
+# Custom scripts output
+deploy-output.txt
+destroy-output.txt

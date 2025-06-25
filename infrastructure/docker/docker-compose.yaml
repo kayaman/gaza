@@ -1,0 +1,200 @@
+version: "3.8"
+
+services:
+  # Main application service
+  secure-chat-proxy:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/Dockerfile
+      target: production
+    container_name: secure-chat-proxy
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=info
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TOTP_SECRET=${TOTP_SECRET}
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - DYNAMODB_REGION=us-east-1
+      - DYNAMODB_TABLE=encrypted-chat-sessions
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
+    depends_on:
+      - dynamodb-local
+      - redis
+    networks:
+      - secure-chat-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Local DynamoDB for development
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: dynamodb-local
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "./data"]
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+    networks:
+      - secure-chat-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - secure-chat-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      - secure-chat-proxy
+    networks:
+      - secure-chat-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring with Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=200h"
+      - "--web.enable-lifecycle"
+    networks:
+      - secure-chat-network
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - secure-chat-network
+
+  # Log aggregation with Fluentd
+  fluentd:
+    build:
+      context: ./fluentd
+      dockerfile: Dockerfile
+    container_name: fluentd
+    restart: unless-stopped
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    volumes:
+      - ./fluentd/conf:/fluentd/etc:ro
+      - fluentd-logs:/var/log/fluentd
+    networks:
+      - secure-chat-network
+
+  # Development tools container
+  dev-tools:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/Dockerfile.dev
+    container_name: dev-tools
+    restart: "no"
+    volumes:
+      - ../../:/workspace
+      - dev-node-modules:/workspace/node_modules
+    working_dir: /workspace
+    networks:
+      - secure-chat-network
+    profiles:
+      - dev
+
+# Named volumes for data persistence
+volumes:
+  dynamodb-data:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  fluentd-logs:
+    driver: local
+  nginx-logs:
+    driver: local
+  dev-node-modules:
+    driver: local
+
+# Custom network
+networks:
+  secure-chat-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
