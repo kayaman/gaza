@@ -1,0 +1,997 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Secure AI Chat Proxy API",
+    "description": "A secure, TOTP-encrypted proxy for AI chat services with enterprise-grade security and corporate network obfuscation. Provides encrypted communication with Claude AI through business-domain camouflaged endpoints.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Secure AI Chat Proxy Team",
+      "email": "support@secure-ai-chat.com",
+      "url": "https://github.com/your-org/secure-ai-chat-proxy"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    },
+    "termsOfService": "https://secure-ai-chat.com/terms"
+  },
+  "servers": [
+    {
+      "url": "https://api.consulting-metrics.com",
+      "description": "Primary business domain (obfuscated)"
+    },
+    {
+      "url": "https://webhook.project-sync.net",
+      "description": "Backup business domain (obfuscated)"
+    },
+    {
+      "url": "https://analytics.performance-data.org",
+      "description": "Secondary backup domain (obfuscated)"
+    },
+    {
+      "url": "https://your-lambda-url.execute-api.us-east-1.amazonaws.com/prod",
+      "description": "AWS Lambda endpoint (direct)"
+    },
+    {
+      "url": "https://your-vercel-deployment.vercel.app",
+      "description": "Vercel deployment"
+    }
+  ],
+  "paths": {
+    "/chat": {
+      "post": {
+        "summary": "Send encrypted chat message",
+        "description": "Send an encrypted message to the AI assistant using TOTP-based authentication. The message is encrypted client-side with AES-256-GCM using a TOTP-derived key.",
+        "operationId": "sendChatMessage",
+        "tags": ["Chat"],
+        "security": [
+          {
+            "TOTP": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              },
+              "examples": {
+                "basicChat": {
+                  "summary": "Basic chat message",
+                  "value": {
+                    "action": "chat",
+                    "sessionId": "proj-2025-k3n9x7m2q",
+                    "encryptedMessage": "a1b2c3d4e5f6789012345678901234567890abcdef...",
+                    "iv": "123456789012345678901234",
+                    "totpCode": "123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Chat message processed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                },
+                "examples": {
+                  "successfulResponse": {
+                    "summary": "Successful chat response",
+                    "value": {
+                      "success": true,
+                      "encryptedResponse": "9f8e7d6c5b4a392817263544f5e6d7c8b9a0...",
+                      "responseIv": "876543210987654321098765",
+                      "totpUsed": "123456",
+                      "sessionId": "proj-2025-k3n9x7m2q",
+                      "requestId": "req-1640995200000-abc123",
+                      "timestamp": "2025-06-25T14:30:00.000Z",
+                      "messageCount": 5
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or expired TOTP code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "invalidTOTP": {
+                    "summary": "Invalid TOTP code",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "TOTP_INVALID",
+                        "message": "Invalid or expired TOTP code"
+                      },
+                      "requestId": "req-1640995200000-def456",
+                      "timestamp": "2025-06-25T14:30:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimit"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
+          }
+        }
+      },
+      "options": {
+        "summary": "CORS preflight for chat endpoint",
+        "description": "Handle CORS preflight requests for the chat endpoint",
+        "operationId": "chatOptions",
+        "tags": ["CORS"],
+        "responses": {
+          "200": {
+            "description": "CORS preflight response",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "*"
+              },
+              "Access-Control-Allow-Methods": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "GET, POST, OPTIONS"
+              },
+              "Access-Control-Allow-Headers": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Content-Type, Authorization, X-Requested-With"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/history": {
+      "post": {
+        "summary": "Get conversation history",
+        "description": "Retrieve and decrypt conversation history for a session. Requires TOTP authentication and returns encrypted messages decrypted server-side.",
+        "operationId": "getConversationHistory",
+        "tags": ["History"],
+        "security": [
+          {
+            "TOTP": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversation history retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryResponse"
+                },
+                "examples": {
+                  "historyWithStats": {
+                    "summary": "History with statistics",
+                    "value": {
+                      "success": true,
+                      "history": [
+                        {
+                          "role": "user",
+                          "content": "Hello, how can you help me today?",
+                          "timestamp": "2025-06-25T14:25:00.000Z",
+                          "messageLength": 33
+                        },
+                        {
+                          "role": "assistant",
+                          "content": "Hello! I'm Claude, an AI assistant created by Anthropic. I'm here to help you with a wide variety of tasks...",
+                          "timestamp": "2025-06-25T14:25:05.000Z",
+                          "messageLength": 125
+                        }
+                      ],
+                      "sessionId": "proj-2025-k3n9x7m2q",
+                      "messageCount": 2,
+                      "totalMessages": 2,
+                      "stats": {
+                        "totalMessages": 2,
+                        "userMessages": 1,
+                        "assistantMessages": 1,
+                        "totalContentLength": 158,
+                        "averageMessageLength": 79,
+                        "firstMessageAt": "2025-06-25T14:25:00.000Z",
+                        "lastMessageAt": "2025-06-25T14:25:05.000Z"
+                      },
+                      "requestId": "req-1640995500000-ghi789",
+                      "timestamp": "2025-06-25T14:30:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "post": {
+        "summary": "Search conversation history",
+        "description": "Search through conversation history for specific content. Decrypts messages server-side and performs case-insensitive text search.",
+        "operationId": "searchConversation",
+        "tags": ["Search"],
+        "security": [
+          {
+            "TOTP": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search completed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "description": "Basic health check endpoint for load balancers and monitoring systems. Returns service status and basic system information.",
+        "operationId": "healthCheck",
+        "tags": ["Health"],
+        "parameters": [
+          {
+            "name": "detailed",
+            "in": "query",
+            "description": "Include detailed component health checks",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "examples": {
+                  "basicHealth": {
+                    "summary": "Basic health check",
+                    "value": {
+                      "status": "healthy",
+                      "timestamp": "2025-06-25T14:30:00.000Z",
+                      "service": "secure-ai-chat-proxy",
+                      "version": "1.0.0",
+                      "environment": "production",
+                      "uptime": 3600,
+                      "requestId": "health-1640995200000-xyz123",
+                      "responseTime": 15
+                    }
+                  },
+                  "detailedHealth": {
+                    "summary": "Detailed health check",
+                    "value": {
+                      "status": "healthy",
+                      "timestamp": "2025-06-25T14:30:00.000Z",
+                      "service": "secure-ai-chat-proxy",
+                      "version": "1.0.0",
+                      "environment": "production",
+                      "uptime": 3600,
+                      "requestId": "health-1640995200000-xyz123",
+                      "components": {
+                        "storage": {
+                          "status": "healthy",
+                          "message": "DynamoDB accessible",
+                          "lastChecked": "2025-06-25T14:30:00.000Z"
+                        },
+                        "anthropic": {
+                          "status": "healthy",
+                          "message": "API key configured",
+                          "lastChecked": "2025-06-25T14:30:00.000Z"
+                        },
+                        "encryption": {
+                          "status": "healthy",
+                          "message": "Crypto operations working",
+                          "lastChecked": "2025-06-25T14:30:00.000Z"
+                        },
+                        "totp": {
+                          "status": "healthy",
+                          "message": "TOTP configuration valid",
+                          "lastChecked": "2025-06-25T14:30:00.000Z"
+                        }
+                      },
+                      "systemMetrics": {
+                        "memory": {
+                          "rss": 64,
+                          "heapUsed": 32,
+                          "heapTotal": 48,
+                          "external": 8
+                        },
+                        "uptime": 3600,
+                        "nodeVersion": "v18.17.0",
+                        "platform": "linux"
+                      },
+                      "checks": {
+                        "total": 4,
+                        "passed": 4,
+                        "failed": 0
+                      },
+                      "responseTime": 45
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service is unhealthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ChatRequest": {
+        "type": "object",
+        "required": [
+          "action",
+          "sessionId",
+          "encryptedMessage",
+          "iv",
+          "totpCode"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["chat"],
+            "description": "Action type for the request"
+          },
+          "sessionId": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{10,128}$",
+            "description": "Unique session identifier for conversation continuity",
+            "example": "proj-2025-k3n9x7m2q"
+          },
+          "encryptedMessage": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]+$",
+            "description": "AES-256-GCM encrypted message in hex format",
+            "example": "a1b2c3d4e5f6789012345678901234567890abcdef"
+          },
+          "iv": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{24,32}$",
+            "description": "Initialization vector for encryption in hex format",
+            "example": "123456789012345678901234"
+          },
+          "totpCode": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "description": "6-digit TOTP code for authentication",
+            "example": "123456"
+          }
+        }
+      },
+      "ChatResponse": {
+        "type": "object",
+        "required": ["success", "requestId", "timestamp"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates if the request was successful"
+          },
+          "encryptedResponse": {
+            "type": "string",
+            "description": "AES-256-GCM encrypted AI response in hex format",
+            "example": "9f8e7d6c5b4a392817263544f5e6d7c8b9a0"
+          },
+          "responseIv": {
+            "type": "string",
+            "description": "Initialization vector for response encryption",
+            "example": "876543210987654321098765"
+          },
+          "totpUsed": {
+            "type": "string",
+            "description": "TOTP code used for encryption (for decryption reference)",
+            "example": "123456"
+          },
+          "sessionId": {
+            "type": "string",
+            "description": "Session identifier for conversation continuity"
+          },
+          "messageCount": {
+            "type": "integer",
+            "description": "Total number of messages in the conversation",
+            "example": 5
+          },
+          "requestId": {
+            "type": "string",
+            "description": "Unique request identifier for tracking",
+            "example": "req-1640995200000-abc123"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of the response"
+          }
+        }
+      },
+      "HistoryRequest": {
+        "type": "object",
+        "required": ["action", "sessionId", "totpCode"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["getHistory", "history"],
+            "description": "Action type for history retrieval"
+          },
+          "sessionId": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{10,128}$",
+            "description": "Session identifier to retrieve history for"
+          },
+          "totpCode": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "description": "6-digit TOTP code for authentication"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "Maximum number of messages to retrieve"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of messages to skip (for pagination)"
+          },
+          "includeStats": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include session statistics in the response"
+          },
+          "sortOrder": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "asc",
+            "description": "Sort order for messages (ascending or descending by timestamp)"
+          }
+        }
+      },
+      "HistoryResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "history",
+          "sessionId",
+          "messageCount",
+          "requestId",
+          "timestamp"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "description": "Array of decrypted conversation messages"
+          },
+          "sessionId": {
+            "type": "string",
+            "description": "Session identifier"
+          },
+          "messageCount": {
+            "type": "integer",
+            "description": "Number of messages returned"
+          },
+          "totalMessages": {
+            "type": "integer",
+            "description": "Total number of messages in the session"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/SessionStats"
+          },
+          "decryptionErrors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "messageIndex": { "type": "integer" },
+                "timestamp": { "type": "string", "format": "date-time" },
+                "role": { "type": "string" },
+                "error": { "type": "string" }
+              }
+            },
+            "description": "Array of messages that could not be decrypted"
+          },
+          "warning": {
+            "type": "string",
+            "description": "Warning message if some messages couldn't be decrypted"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SearchRequest": {
+        "type": "object",
+        "required": ["action", "sessionId", "totpCode", "searchTerm"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["search"]
+          },
+          "sessionId": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{10,128}$"
+          },
+          "totpCode": {
+            "type": "string",
+            "pattern": "^\\d{6}$"
+          },
+          "searchTerm": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Text to search for in conversation history"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of search results to return"
+          }
+        }
+      },
+      "SearchResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "searchResults",
+          "searchTerm",
+          "resultCount",
+          "requestId",
+          "timestamp"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "searchResults": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                { "$ref": "#/components/schemas/Message" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "messageIndex": {
+                      "type": "integer",
+                      "description": "Index of the message in the conversation"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "searchTerm": {
+            "type": "string",
+            "description": "The search term that was used"
+          },
+          "resultCount": {
+            "type": "integer",
+            "description": "Number of search results found"
+          },
+          "totalMessages": {
+            "type": "integer",
+            "description": "Total number of messages searched"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "required": ["role", "content", "timestamp"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["user", "assistant"],
+            "description": "Role of the message sender"
+          },
+          "content": {
+            "type": "string",
+            "description": "Decrypted message content"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when the message was created"
+          },
+          "messageLength": {
+            "type": "integer",
+            "description": "Length of the message content in characters"
+          }
+        }
+      },
+      "SessionStats": {
+        "type": "object",
+        "properties": {
+          "totalMessages": {
+            "type": "integer",
+            "description": "Total number of messages in the session"
+          },
+          "userMessages": {
+            "type": "integer",
+            "description": "Number of user messages"
+          },
+          "assistantMessages": {
+            "type": "integer",
+            "description": "Number of assistant messages"
+          },
+          "totalContentLength": {
+            "type": "integer",
+            "description": "Total character count of all messages"
+          },
+          "averageMessageLength": {
+            "type": "integer",
+            "description": "Average message length in characters"
+          },
+          "firstMessageAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the first message"
+          },
+          "lastMessageAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the most recent message"
+          },
+          "sessionDuration": {
+            "type": "integer",
+            "description": "Duration of the session in milliseconds"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "timestamp", "service", "version", "requestId"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["healthy", "unhealthy", "degraded"],
+            "description": "Overall health status"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "service": {
+            "type": "string",
+            "description": "Service name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Service version"
+          },
+          "environment": {
+            "type": "string",
+            "description": "Deployment environment"
+          },
+          "uptime": {
+            "type": "integer",
+            "description": "Service uptime in seconds"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "responseTime": {
+            "type": "integer",
+            "description": "Response time in milliseconds"
+          },
+          "components": {
+            "type": "object",
+            "description": "Health status of individual components",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": ["healthy", "unhealthy"]
+                },
+                "message": {
+                  "type": "string"
+                },
+                "lastChecked": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "systemMetrics": {
+            "type": "object",
+            "properties": {
+              "memory": {
+                "type": "object",
+                "properties": {
+                  "rss": {
+                    "type": "integer",
+                    "description": "Resident set size in MB"
+                  },
+                  "heapUsed": {
+                    "type": "integer",
+                    "description": "Heap used in MB"
+                  },
+                  "heapTotal": {
+                    "type": "integer",
+                    "description": "Heap total in MB"
+                  },
+                  "external": {
+                    "type": "integer",
+                    "description": "External memory in MB"
+                  }
+                }
+              },
+              "uptime": { "type": "integer" },
+              "nodeVersion": { "type": "string" },
+              "platform": { "type": "string" }
+            }
+          },
+          "checks": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer" },
+              "passed": { "type": "integer" },
+              "failed": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["success", "error", "requestId", "timestamp"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [false]
+          },
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Error code for programmatic handling",
+                "enum": [
+                  "BAD_REQUEST",
+                  "UNAUTHORIZED",
+                  "FORBIDDEN",
+                  "NOT_FOUND",
+                  "METHOD_NOT_ALLOWED",
+                  "CONFLICT",
+                  "VALIDATION_ERROR",
+                  "RATE_LIMITED",
+                  "INTERNAL_ERROR",
+                  "NOT_IMPLEMENTED",
+                  "BAD_GATEWAY",
+                  "SERVICE_UNAVAILABLE",
+                  "GATEWAY_TIMEOUT",
+                  "TOTP_INVALID",
+                  "ENCRYPTION_ERROR",
+                  "STORAGE_ERROR",
+                  "AI_SERVICE_ERROR",
+                  "SESSION_NOT_FOUND",
+                  "CONFIGURATION_ERROR"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "description": "Human-readable error message"
+              },
+              "details": {
+                "type": "object",
+                "description": "Additional error details (development only)"
+              }
+            }
+          },
+          "requestId": {
+            "type": "string",
+            "description": "Unique request identifier for debugging"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request - invalid input parameters",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized - invalid or expired TOTP code",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "RateLimit": {
+        "description": "Rate limit exceeded",
+        "headers": {
+          "Retry-After": {
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Number of seconds to wait before retrying"
+          },
+          "X-RateLimit-Limit": {
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "X-RateLimit-Remaining": {
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "X-RateLimit-Reset": {
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "BadGateway": {
+        "description": "Bad gateway - external service error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "TOTP": {
+        "type": "apiKey",
+        "in": "body",
+        "name": "totpCode",
+        "description": "Time-based One-Time Password (TOTP) authentication. Generate a 6-digit code using Google Authenticator or compatible TOTP app with the configured secret. Codes are valid for 30 seconds with a ±30 second tolerance window."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Chat",
+      "description": "Encrypted AI chat functionality with TOTP authentication"
+    },
+    {
+      "name": "History",
+      "description": "Conversation history management and retrieval"
+    },
+    {
+      "name": "Search",
+      "description": "Search functionality for conversation content"
+    },
+    {
+      "name": "Health",
+      "description": "Service health monitoring and diagnostics"
+    },
+    {
+      "name": "CORS",
+      "description": "Cross-Origin Resource Sharing support"
+    }
+  ],
+  "externalDocs": {
+    "description": "Complete documentation and setup guide",
+    "url": "https://github.com/kayaman/gaza/blob/main/README.md"
+  }
+}

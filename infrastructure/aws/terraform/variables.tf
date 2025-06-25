@@ -1,149 +1,61 @@
-# ========================================
-# Core Infrastructure Variables
-# ========================================
+# Terraform Variables for Secure AI Chat Proxy
 
-variable "aws_region" {
-  description = "AWS region for all resources"
-  type        = string
-  default     = "us-east-1"
-  
-  validation {
-    condition = can(regex("^[a-z0-9-]+$", var.aws_region))
-    error_message = "AWS region must be a valid region identifier."
-  }
-}
-
-variable "environment" {
-  description = "Environment name (development, staging, production)"
-  type        = string
-  
-  validation {
-    condition     = contains(["development", "staging", "production"], var.environment)
-    error_message = "Environment must be one of: development, staging, production."
-  }
-}
-
+# Basic Configuration
 variable "project_name" {
   description = "Name of the project"
   type        = string
   default     = "secure-ai-chat-proxy"
-  
+}
+
+variable "environment" {
+  description = "Environment name (dev, staging, prod)"
+  type        = string
+  default     = "dev"
+
   validation {
-    condition     = can(regex("^[a-z0-9-]+$", var.project_name))
-    error_message = "Project name must contain only lowercase letters, numbers, and hyphens."
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be one of: dev, staging, prod."
   }
 }
 
-variable "created_by" {
-  description = "Who created this infrastructure (for tagging)"
+variable "aws_region" {
+  description = "AWS region for deployment"
   type        = string
-  default     = "terraform"
+  default     = "us-east-1"
 }
 
-variable "cost_center" {
-  description = "Cost center for billing (for tagging)"
-  type        = string
-  default     = "engineering"
-}
-
-# ========================================
-# Terraform State Management
-# ========================================
-
-variable "terraform_state_bucket" {
-  description = "S3 bucket name for Terraform state storage"
-  type        = string
-  
-  validation {
-    condition     = can(regex("^[a-z0-9.-]+$", var.terraform_state_bucket))
-    error_message = "S3 bucket name must be valid."
-  }
-}
-
-variable "terraform_lock_table" {
-  description = "DynamoDB table name for Terraform state locking"
-  type        = string
-  default     = "terraform-state-lock"
-}
-
-# ========================================
-# Security Configuration
-# ========================================
-
+# API Configuration
 variable "anthropic_api_key" {
   description = "Anthropic API key for Claude access"
   type        = string
   sensitive   = true
-  
+
   validation {
-    condition     = length(var.anthropic_api_key) > 10
-    error_message = "Anthropic API key must be provided."
+    condition     = length(var.anthropic_api_key) > 50
+    error_message = "Anthropic API key must be provided and valid."
   }
 }
 
 variable "totp_secret" {
-  description = "Base32 encoded TOTP secret for encryption"
+  description = "Base32 encoded TOTP secret"
   type        = string
   sensitive   = true
-  
+
   validation {
-    condition     = can(regex("^[A-Z2-7]+$", var.totp_secret)) && length(var.totp_secret) >= 16
-    error_message = "TOTP secret must be a valid base32 string of at least 16 characters."
+    condition     = length(var.totp_secret) >= 16
+    error_message = "TOTP secret must be at least 16 characters long."
   }
 }
 
-variable "session_ttl_days" {
-  description = "Number of days before chat sessions expire"
-  type        = number
-  default     = 30
-  
-  validation {
-    condition     = var.session_ttl_days >= 1 && var.session_ttl_days <= 365
-    error_message = "Session TTL must be between 1 and 365 days."
-  }
-}
-
-# ========================================
 # Lambda Configuration
-# ========================================
-
-variable "lambda_function_name" {
-  description = "Name of the Lambda function"
-  type        = string
-  default     = "secure-chat-proxy"
-}
-
-variable "lambda_runtime" {
-  description = "Lambda runtime version"
-  type        = string
-  default     = "nodejs18.x"
-  
-  validation {
-    condition     = contains(["nodejs18.x", "nodejs20.x"], var.lambda_runtime)
-    error_message = "Lambda runtime must be nodejs18.x or nodejs20.x."
-  }
-}
-
-variable "lambda_source_path" {
-  description = "Path to Lambda source code"
-  type        = string
-  default     = "../../../backend/lambda"
-}
-
-variable "lambda_handler" {
-  description = "Lambda function handler"
-  type        = string
-  default     = "src/index.handler"
-}
-
 variable "lambda_timeout" {
   description = "Lambda function timeout in seconds"
   type        = number
   default     = 30
-  
+
   validation {
-    condition     = var.lambda_timeout >= 3 && var.lambda_timeout <= 900
-    error_message = "Lambda timeout must be between 3 and 900 seconds."
+    condition     = var.lambda_timeout >= 10 && var.lambda_timeout <= 900
+    error_message = "Lambda timeout must be between 10 and 900 seconds."
   }
 }
 
@@ -151,66 +63,34 @@ variable "lambda_memory_size" {
   description = "Lambda function memory size in MB"
   type        = number
   default     = 256
-  
+
   validation {
     condition     = var.lambda_memory_size >= 128 && var.lambda_memory_size <= 10240
     error_message = "Lambda memory size must be between 128 and 10240 MB."
   }
 }
 
-variable "lambda_reserved_concurrency" {
-  description = "Reserved concurrency for Lambda function"
-  type        = number
-  default     = 100
-  
+variable "log_level" {
+  description = "Log level for Lambda function"
+  type        = string
+  default     = "INFO"
+
   validation {
-    condition     = var.lambda_reserved_concurrency >= 0
-    error_message = "Reserved concurrency must be non-negative."
+    condition     = contains(["ERROR", "WARN", "INFO", "DEBUG", "TRACE"], var.log_level)
+    error_message = "Log level must be one of: ERROR, WARN, INFO, DEBUG, TRACE."
   }
 }
 
-variable "lambda_provisioned_concurrency" {
-  description = "Provisioned concurrency for Lambda function"
-  type        = number
-  default     = 5
-  
-  validation {
-    condition     = var.lambda_provisioned_concurrency >= 0
-    error_message = "Provisioned concurrency must be non-negative."
-  }
-}
-
-# ========================================
 # DynamoDB Configuration
-# ========================================
+variable "session_ttl_days" {
+  description = "Number of days to retain session data"
+  type        = number
+  default     = 30
 
-variable "dynamodb_table_name" {
-  description = "Name of the DynamoDB table"
-  type        = string
-  default     = "encrypted-chat-sessions"
-}
-
-variable "dynamodb_billing_mode" {
-  description = "DynamoDB billing mode"
-  type        = string
-  default     = "PAY_PER_REQUEST"
-  
   validation {
-    condition     = contains(["PAY_PER_REQUEST", "PROVISIONED"], var.dynamodb_billing_mode)
-    error_message = "Billing mode must be PAY_PER_REQUEST or PROVISIONED."
+    condition     = var.session_ttl_days >= 1 && var.session_ttl_days <= 365
+    error_message = "Session TTL must be between 1 and 365 days."
   }
-}
-
-variable "dynamodb_read_capacity" {
-  description = "DynamoDB read capacity units (for PROVISIONED billing)"
-  type        = number
-  default     = 5
-}
-
-variable "dynamodb_write_capacity" {
-  description = "DynamoDB write capacity units (for PROVISIONED billing)"
-  type        = number
-  default     = 5
 }
 
 variable "enable_point_in_time_recovery" {
@@ -219,55 +99,17 @@ variable "enable_point_in_time_recovery" {
   default     = true
 }
 
-# ========================================
 # API Gateway Configuration
-# ========================================
-
-variable "api_gateway_name" {
-  description = "Name of the API Gateway"
-  type        = string
-  default     = "secure-chat-api"
-}
-
-variable "api_gateway_description" {
-  description = "Description of the API Gateway"
-  type        = string
-  default     = "Secure AI Chat Proxy API"
-}
-
-variable "api_gateway_stage" {
-  description = "API Gateway deployment stage"
+variable "api_stage_name" {
+  description = "API Gateway stage name"
   type        = string
   default     = "prod"
-}
 
-variable "api_throttle_rate_limit" {
-  description = "API Gateway throttle rate limit (requests per second)"
-  type        = number
-  default     = 1000
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9_-]+$", var.api_stage_name))
+    error_message = "API stage name must contain only alphanumeric characters, hyphens, and underscores."
+  }
 }
-
-variable "api_throttle_burst_limit" {
-  description = "API Gateway throttle burst limit"
-  type        = number
-  default     = 2000
-}
-
-variable "enable_api_access_logging" {
-  description = "Enable API Gateway access logging"
-  type        = bool
-  default     = true
-}
-
-variable "api_cors_origins" {
-  description = "Allowed CORS origins for API Gateway"
-  type        = list(string)
-  default     = ["*"]
-}
-
-# ========================================
-# Domain Configuration
-# ========================================
 
 variable "custom_domain_name" {
   description = "Custom domain name for API Gateway"
@@ -275,258 +117,334 @@ variable "custom_domain_name" {
   default     = ""
 }
 
-variable "domain_certificate_arn" {
-  description = "ACM certificate ARN for custom domain"
+variable "ssl_certificate_arn" {
+  description = "ARN of SSL certificate for custom domain"
   type        = string
   default     = ""
 }
 
-variable "domain_hosted_zone_id" {
+variable "route53_zone_id" {
   description = "Route53 hosted zone ID for custom domain"
   type        = string
   default     = ""
 }
 
-# ========================================
-# Monitoring & Alerting Configuration
-# ========================================
+# Security Configuration
+variable "enable_waf" {
+  description = "Enable WAF protection for API Gateway"
+  type        = bool
+  default     = true
+}
 
-variable "cloudwatch_log_retention_days" {
+variable "waf_rate_limit" {
+  description = "WAF rate limit (requests per 5 minutes per IP)"
+  type        = number
+  default     = 2000
+
+  validation {
+    condition     = var.waf_rate_limit >= 100 && var.waf_rate_limit <= 20000000
+    error_message = "WAF rate limit must be between 100 and 20,000,000."
+  }
+}
+
+variable "blocked_countries" {
+  description = "List of country codes to block (ISO 3166-1 alpha-2)"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for country in var.blocked_countries : can(regex("^[A-Z]{2}$", country))
+    ])
+    error_message = "Country codes must be valid ISO 3166-1 alpha-2 codes (e.g., 'US', 'CN')."
+  }
+}
+
+variable "kms_deletion_window" {
+  description = "KMS key deletion window in days"
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = var.kms_deletion_window >= 7 && var.kms_deletion_window <= 30
+    error_message = "KMS deletion window must be between 7 and 30 days."
+  }
+}
+
+# Monitoring Configuration
+variable "log_retention_days" {
   description = "CloudWatch log retention in days"
   type        = number
-  default     = 30
-  
+  default     = 14
+
   validation {
     condition = contains([
       1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653
-    ], var.cloudwatch_log_retention_days)
+    ], var.log_retention_days)
     error_message = "Log retention days must be a valid CloudWatch retention period."
   }
 }
 
-variable "log_level" {
-  description = "Application log level"
+variable "enable_xray_tracing" {
+  description = "Enable AWS X-Ray tracing"
+  type        = bool
+  default     = false
+}
+
+variable "sns_topic_arn" {
+  description = "SNS topic ARN for alarm notifications"
   type        = string
-  default     = "INFO"
-  
+  default     = ""
+}
+
+# Advanced Configuration
+variable "use_ssm_for_secrets" {
+  description = "Use AWS Systems Manager Parameter Store for secrets"
+  type        = bool
+  default     = false
+}
+
+variable "create_lambda_layer" {
+  description = "Create a Lambda layer for dependencies"
+  type        = bool
+  default     = false
+}
+
+variable "enable_scheduled_cleanup" {
+  description = "Enable scheduled cleanup of expired data"
+  type        = bool
+  default     = true
+}
+
+variable "cleanup_schedule_expression" {
+  description = "CloudWatch Events schedule expression for cleanup"
+  type        = string
+  default     = "rate(1 day)"
+
   validation {
-    condition     = contains(["DEBUG", "INFO", "WARN", "ERROR"], var.log_level)
-    error_message = "Log level must be one of: DEBUG, INFO, WARN, ERROR."
+    condition = can(regex("^(rate\\(|cron\\()", var.cleanup_schedule_expression))
+    error_message = "Schedule expression must be a valid CloudWatch Events expression."
   }
 }
 
-variable "sns_topic_name" {
-  description = "SNS topic name for alerts"
-  type        = string
-  default     = "secure-chat-alerts"
+# Network Configuration
+variable "enable_vpc" {
+  description = "Deploy Lambda function in VPC"
+  type        = bool
+  default     = false
 }
 
-variable "alert_email_endpoints" {
-  description = "Email addresses for alert notifications"
+variable "vpc_id" {
+  description = "VPC ID for Lambda deployment"
+  type        = string
+  default     = ""
+}
+
+variable "subnet_ids" {
+  description = "Subnet IDs for Lambda deployment"
   type        = list(string)
   default     = []
 }
 
-variable "slack_webhook_url" {
-  description = "Slack webhook URL for notifications"
-  type        = string
-  default     = ""
-  sensitive   = true
+variable "security_group_ids" {
+  description = "Security group IDs for Lambda function"
+  type        = list(string)
+  default     = []
 }
 
-# ========================================
-# Monitoring Thresholds
-# ========================================
-
-variable "lambda_error_threshold" {
-  description = "Lambda error rate threshold for alerts (%)"
-  type        = number
-  default     = 5
-}
-
-variable "lambda_duration_threshold" {
-  description = "Lambda duration threshold for alerts (ms)"
-  type        = number
-  default     = 10000
-}
-
-variable "api_4xx_error_threshold" {
-  description = "API Gateway 4xx error threshold for alerts (%)"
-  type        = number
-  default     = 10
-}
-
-variable "api_5xx_error_threshold" {
-  description = "API Gateway 5xx error threshold for alerts (%)"
-  type        = number
-  default     = 1
-}
-
-variable "totp_failure_threshold" {
-  description = "TOTP validation failure threshold for alerts"
-  type        = number
-  default     = 50
-}
-
-variable "dynamodb_throttle_threshold" {
-  description = "DynamoDB throttle threshold for alerts"
-  type        = number
-  default     = 5
-}
-
-# ========================================
-# Security & Compliance
-# ========================================
-
-variable "enable_cloudtrail" {
-  description = "Enable CloudTrail for audit logging"
+# Backup and Recovery
+variable "enable_backup" {
+  description = "Enable automated backups"
   type        = bool
   default     = true
-}
-
-variable "enable_config" {
-  description = "Enable AWS Config for compliance monitoring"
-  type        = bool
-  default     = false
-}
-
-variable "enable_guardduty" {
-  description = "Enable GuardDuty for threat detection"
-  type        = bool
-  default     = false
-}
-
-variable "enable_waf" {
-  description = "Enable WAF for API Gateway protection"
-  type        = bool
-  default     = false
-}
-
-# ========================================
-# Backup & Disaster Recovery
-# ========================================
-
-variable "enable_automated_backups" {
-  description = "Enable automated DynamoDB backups"
-  type        = bool
-  default     = true
-}
-
-variable "backup_schedule" {
-  description = "Backup schedule in cron format"
-  type        = string
-  default     = "cron(0 2 * * ? *)" # Daily at 2 AM
 }
 
 variable "backup_retention_days" {
-  description = "Backup retention period in days"
+  description = "Number of days to retain backups"
   type        = number
   default     = 30
+
+  validation {
+    condition     = var.backup_retention_days >= 1 && var.backup_retention_days <= 365
+    error_message = "Backup retention must be between 1 and 365 days."
+  }
 }
 
-variable "enable_cross_region_backup" {
-  description = "Enable cross-region backup replication"
+# Performance Configuration
+variable "dynamodb_read_capacity" {
+  description = "DynamoDB read capacity units (only for provisioned billing)"
+  type        = number
+  default     = 5
+}
+
+variable "dynamodb_write_capacity" {
+  description = "DynamoDB write capacity units (only for provisioned billing)"
+  type        = number
+  default     = 5
+}
+
+variable "use_provisioned_billing" {
+  description = "Use provisioned billing mode for DynamoDB"
   type        = bool
   default     = false
 }
 
-variable "backup_region" {
-  description = "Secondary region for backup replication"
-  type        = string
-  default     = "us-west-2"
-}
-
-# ========================================
-# Development & Testing
-# ========================================
-
-variable "enable_debug_logging" {
-  description = "Enable detailed debug logging"
+# Development Configuration
+variable "enable_debug_mode" {
+  description = "Enable debug mode for development"
   type        = bool
   default     = false
 }
 
-variable "enable_local_development" {
-  description = "Enable local development features"
-  type        = bool
-  default     = false
-}
-
-variable "allowed_source_ips" {
-  description = "Allowed source IP addresses (for development)"
+variable "allowed_origins" {
+  description = "Allowed CORS origins for API Gateway"
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = ["*"]
 }
 
-# ========================================
 # Cost Optimization
-# ========================================
-
 variable "enable_cost_optimization" {
   description = "Enable cost optimization features"
   type        = bool
   default     = true
 }
 
-variable "lambda_architecture" {
-  description = "Lambda architecture (x86_64 or arm64)"
-  type        = string
-  default     = "arm64"
-  
+variable "reserved_concurrency" {
+  description = "Reserved concurrency for Lambda function"
+  type        = number
+  default     = -1
+
   validation {
-    condition     = contains(["x86_64", "arm64"], var.lambda_architecture)
-    error_message = "Architecture must be x86_64 or arm64."
+    condition     = var.reserved_concurrency == -1 || var.reserved_concurrency >= 0
+    error_message = "Reserved concurrency must be -1 (no limit) or >= 0."
   }
 }
 
-variable "enable_resource_tagging" {
-  description = "Enable comprehensive resource tagging"
-  type        = bool
-  default     = true
-}
-
-# ========================================
-# Feature Flags
-# ========================================
-
-variable "enable_api_key_authentication" {
-  description = "Enable API key authentication"
+# Multi-Region Configuration
+variable "enable_multi_region" {
+  description = "Enable multi-region deployment"
   type        = bool
   default     = false
 }
 
-variable "enable_cognito_authentication" {
-  description = "Enable Cognito user pool authentication"
-  type        = bool
-  default     = false
-}
-
-variable "enable_vpc_deployment" {
-  description = "Deploy Lambda in VPC for additional security"
-  type        = bool
-  default     = false
-}
-
-variable "vpc_id" {
-  description = "VPC ID for Lambda deployment (if enable_vpc_deployment is true)"
-  type        = string
-  default     = ""
-}
-
-variable "private_subnet_ids" {
-  description = "Private subnet IDs for Lambda deployment"
+variable "backup_regions" {
+  description = "List of backup regions for multi-region deployment"
   type        = list(string)
   default     = []
 }
 
-variable "enable_custom_kms_key" {
-  description = "Use custom KMS key for encryption"
+# Business Domain Configuration
+variable "primary_domains" {
+  description = "List of primary business domains for obfuscation"
+  type        = list(string)
+  default = [
+    "api.consulting-metrics.com",
+    "webhook.project-sync.net",
+    "analytics.performance-data.org"
+  ]
+}
+
+variable "backup_domains" {
+  description = "List of backup business domains"
+  type        = list(string)
+  default = [
+    "sync.document-workflow.com",
+    "reporting.business-intelligence.net"
+  ]
+}
+
+# Compliance Configuration
+variable "enable_compliance_mode" {
+  description = "Enable compliance features (GDPR, SOC2, etc.)"
   type        = bool
   default     = false
 }
 
-variable "kms_key_id" {
-  description = "Custom KMS key ID for encryption"
+variable "data_residency_region" {
+  description = "Required data residency region for compliance"
   type        = string
   default     = ""
+}
+
+variable "enable_audit_logging" {
+  description = "Enable detailed audit logging"
+  type        = bool
+  default     = false
+}
+
+# Disaster Recovery
+variable "enable_disaster_recovery" {
+  description = "Enable disaster recovery features"
+  type        = bool
+  default     = false
+}
+
+variable "rto_minutes" {
+  description = "Recovery Time Objective in minutes"
+  type        = number
+  default     = 60
+
+  validation {
+    condition     = var.rto_minutes >= 5 && var.rto_minutes <= 1440
+    error_message = "RTO must be between 5 minutes and 24 hours."
+  }
+}
+
+variable "rpo_minutes" {
+  description = "Recovery Point Objective in minutes"
+  type        = number
+  default     = 15
+
+  validation {
+    condition     = var.rpo_minutes >= 1 && var.rpo_minutes <= 1440
+    error_message = "RPO must be between 1 minute and 24 hours."
+  }
+}
+
+# Testing Configuration
+variable "enable_chaos_engineering" {
+  description = "Enable chaos engineering features for testing"
+  type        = bool
+  default     = false
+}
+
+variable "test_failure_rate" {
+  description = "Artificial failure rate for chaos testing (0.0-1.0)"
+  type        = number
+  default     = 0.0
+
+  validation {
+    condition     = var.test_failure_rate >= 0.0 && var.test_failure_rate <= 1.0
+    error_message = "Test failure rate must be between 0.0 and 1.0."
+  }
+}
+
+# Resource Tagging
+variable "additional_tags" {
+  description = "Additional tags to apply to all resources"
+  type        = map(string)
+  default     = {}
+}
+
+variable "cost_center" {
+  description = "Cost center for billing allocation"
+  type        = string
+  default     = ""
+}
+
+variable "owner" {
+  description = "Owner of the resources"
+  type        = string
+  default     = ""
+}
+
+variable "contact_email" {
+  description = "Contact email for the resources"
+  type        = string
+  default     = ""
+
+  validation {
+    condition = var.contact_email == "" || can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", var.contact_email))
+    error_message = "Contact email must be a valid email address."
+  }
 }
